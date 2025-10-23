@@ -27,7 +27,7 @@ export type BoardData = {
   lists: List[]
 }
 
-const BOARD_SYNC_ID = 'trello-board-data'
+const getBoardSyncId = (projectId: string) => `project-${projectId}-board`
 
 const initialBoardData: BoardData = {
   id: "board-1",
@@ -114,17 +114,19 @@ const initialBoardData: BoardData = {
   ],
 }
 
-export function useLiveBoardSync() {
+export function useLiveBoardSync(projectId: string) {
   const [localBoardData, setLocalBoardData] = useState<BoardData>(initialBoardData)
   const [isInitialized, setIsInitialized] = useState(false)
 
+  const boardSyncId = getBoardSyncId(projectId)
+
   // Get live state data from Velt
-  const syncedBoardData = useLiveStateData(BOARD_SYNC_ID, {
+  const syncedBoardData = useLiveStateData(boardSyncId, {
     listenToNewChangesOnly: false
   })
 
   // Set live state data to Velt
-  useSetLiveStateData(BOARD_SYNC_ID, localBoardData, { merge: false })
+  useSetLiveStateData(boardSyncId, localBoardData, { merge: false })
 
   // Initialize with synced data if available
   useEffect(() => {
