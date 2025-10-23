@@ -1,44 +1,54 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useDroppable } from "@dnd-kit/core"
-import { useDraggable } from "@dnd-kit/core"
-import { Plus, MoreHorizontal, Clock } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { AddCardForm } from "@/components/add-card-form"
-import { AddListForm } from "@/components/add-list-form"
-import { BoardCard } from "@/hooks/use-live-board-sync"
+import { useState } from "react";
+import { useDroppable } from "@dnd-kit/core";
+import { useDraggable } from "@dnd-kit/core";
+import { useSortable } from "@dnd-kit/sortable";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { Plus, MoreHorizontal, Clock, GripVertical } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { AddCardForm } from "@/components/add-card-form";
+import { AddListForm } from "@/components/add-list-form";
+import { BoardCard } from "@/hooks/use-live-board-sync";
 
 interface BoardUser {
-  id: string
-  name: string
-  avatar: string
-  email: string
-  online: boolean
+  id: string;
+  name: string;
+  avatar: string;
+  email: string;
+  online: boolean;
 }
 
 interface Reaction {
-  emoji: string
-  count: number
-  users: string[]
+  emoji: string;
+  count: number;
+  users: string[];
 }
 
 interface List {
-  id: string
-  title: string
-  cards: BoardCard[]
+  id: string;
+  title: string;
+  cards: BoardCard[];
 }
 
 interface BoardData {
-  id: string
-  title: string
-  lists: List[]
+  id: string;
+  title: string;
+  lists: List[];
 }
 
 // Static list of label background classes so Tailwind JIT picks them up.
@@ -55,50 +65,50 @@ const LABEL_BG_CLASSES: Record<string, string> = {
   "bg-gray-500": "bg-gray-500",
   "bg-orange-500": "bg-orange-500",
   "bg-teal-500": "bg-teal-500",
-}
+};
 
 // Update the BoardProps interface to include onDeleteCard
 interface BoardProps {
-  board: BoardData
-  users: BoardUser[]
-  onCardClick: (cardId: string) => void
-  onAddCard: (listId: string, title: string) => void
-  onAddList: (title: string) => void
-  onDeleteCard: (cardId: string) => void
+  board: BoardData;
+  users: BoardUser[];
+  onCardClick: (cardId: string) => void;
+  onAddCard: (listId: string, title: string) => void;
+  onAddList: (title: string) => void;
+  onDeleteCard: (cardId: string) => void;
 }
 
 // Utility function to format relative time
 function formatRelativeTime(timestamp: string): string {
-  const now = new Date()
-  const past = new Date(timestamp)
-  const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000)
+  const now = new Date();
+  const past = new Date(timestamp);
+  const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
 
   if (diffInSeconds < 60) {
-    return diffInSeconds <= 5 ? "just now" : `${diffInSeconds}s ago`
+    return diffInSeconds <= 5 ? "just now" : `${diffInSeconds}s ago`;
   }
 
-  const diffInMinutes = Math.floor(diffInSeconds / 60)
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) {
-    return `${diffInMinutes}m ago`
+    return `${diffInMinutes}m ago`;
   }
 
-  const diffInHours = Math.floor(diffInMinutes / 60)
+  const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) {
-    return `${diffInHours}h ago`
+    return `${diffInHours}h ago`;
   }
 
-  const diffInDays = Math.floor(diffInHours / 24)
+  const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays < 7) {
-    return `${diffInDays}d ago`
+    return `${diffInDays}d ago`;
   }
 
-  const diffInWeeks = Math.floor(diffInDays / 7)
+  const diffInWeeks = Math.floor(diffInDays / 7);
   if (diffInWeeks < 4) {
-    return `${diffInWeeks}w ago`
+    return `${diffInWeeks}w ago`;
   }
 
-  const diffInMonths = Math.floor(diffInDays / 30)
-  return `${diffInMonths}mo ago`
+  const diffInMonths = Math.floor(diffInDays / 30);
+  return `${diffInMonths}mo ago`;
 }
 
 // Update the DraggableCard component to include delete functionality
@@ -108,44 +118,47 @@ function DraggableCard({
   onCardClick,
   onDeleteCard,
 }: {
-  card: BoardCard
-  users: BoardUser[]
-  onCardClick: (cardId: string) => void
-  onDeleteCard: (cardId: string) => void
+  card: BoardCard;
+  users: BoardUser[];
+  onCardClick: (cardId: string) => void;
+  onDeleteCard: (cardId: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: card.id,
-  })
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: card.id,
+    });
 
-  const getUserById = (id: string) => users.find((user) => user.id === id)
-  const creator = getUserById(card.createdBy)
+  const getUserById = (id: string) => users.find((user) => user.id === id);
+  const creator = getUserById(card.createdBy);
 
   const style = transform
     ? {
         transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
       }
-    : undefined
+    : undefined;
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Prevent card click when clicking on dropdown menu
     if ((e.target as HTMLElement).closest("[data-dropdown-trigger]")) {
-      return
+      return;
     }
-    onCardClick(card.id)
-  }
+    onCardClick(card.id);
+  };
 
   const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
+    e.stopPropagation();
     if (window.confirm(`Are you sure you want to delete "${card.title}"?`)) {
-      onDeleteCard(card.id)
+      onDeleteCard(card.id);
     }
-  }
+  };
 
   return (
     <Card
       ref={setNodeRef}
       style={style}
-      className={`cursor-pointer hover:shadow-md transition-shadow bg-card group relative ${isDragging ? "opacity-50" : ""}`}
+      className={`cursor-pointer hover:shadow-md transition-shadow bg-card group relative ${
+        isDragging ? "opacity-50" : ""
+      }`}
       onClick={handleCardClick}
       data-velt-target={`card-${card.id}`}
       {...listeners}
@@ -167,9 +180,16 @@ function DraggableCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={() => onCardClick(card.id)}>Open card</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onCardClick(card.id)}>Edit card</DropdownMenuItem>
-              <DropdownMenuItem onClick={handleDeleteClick} className="text-destructive focus:text-destructive">
+              <DropdownMenuItem onClick={() => onCardClick(card.id)}>
+                Open card
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onCardClick(card.id)}>
+                Edit card
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleDeleteClick}
+                className="text-destructive focus:text-destructive"
+              >
                 Delete card
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -181,26 +201,36 @@ function DraggableCard({
           <div className="flex flex-wrap gap-1 mb-2">
             {card.labels.map((label, index) => {
               // Use a static mapping so Tailwind includes the bg classes.
-              const bgClass = LABEL_BG_CLASSES[label.color] ?? label.color
+              const bgClass = LABEL_BG_CLASSES[label.color] ?? label.color;
               return (
-                <Badge key={index} className={`${bgClass} text-white hover:opacity-80`}>
+                <Badge
+                  key={index}
+                  className={`${bgClass} text-white hover:opacity-80`}
+                >
                   {label.name}
                 </Badge>
-              )
+              );
             })}
           </div>
         )}
 
-        <h4 className="text-sm font-medium mb-2 text-foreground leading-relaxed pr-6">{card.title}</h4>
-        
+        <h4 className="text-sm font-medium mb-2 text-foreground leading-relaxed pr-6">
+          {card.title}
+        </h4>
+
         {/* Description */}
         {card.description && (
-          <p className="text-xs text-muted-foreground mb-3 line-clamp-2 leading-relaxed">{card.description}</p>
+          <p className="text-xs text-muted-foreground mb-3 line-clamp-2 leading-relaxed">
+            {card.description}
+          </p>
         )}
 
         {/* Reactions */}
         {card.reactions.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3" data-velt-reactions={`card-${card.id}`}>
+          <div
+            className="flex flex-wrap gap-1 mb-3"
+            data-velt-reactions={`card-${card.id}`}
+          >
             {card.reactions.map((reaction, index) => (
               <Badge
                 key={index}
@@ -221,9 +251,12 @@ function DraggableCard({
             {card.assignedUsers.length > 0 && (
               <div className="flex -space-x-1">
                 {card.assignedUsers.slice(0, 2).map((userId) => {
-                  const user = getUserById(userId)
+                  const user = getUserById(userId);
                   return user ? (
-                    <Avatar key={userId} className="h-6 w-6 border-2 border-background">
+                    <Avatar
+                      key={userId}
+                      className="h-6 w-6 border-2 border-background"
+                    >
                       <AvatarImage src={user.avatar} alt={user.name} />
                       <AvatarFallback className="text-xs">
                         {user.name
@@ -232,7 +265,7 @@ function DraggableCard({
                           .join("")}
                       </AvatarFallback>
                     </Avatar>
-                  ) : null
+                  ) : null;
                 })}
                 {card.assignedUsers.length > 2 && (
                   <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted border-2 border-background text-xs font-medium">
@@ -250,7 +283,7 @@ function DraggableCard({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 // Update the DroppableList component to pass onDeleteCard
@@ -261,48 +294,85 @@ function DroppableList({
   onAddCard,
   onDeleteCard,
 }: {
-  list: List
-  users: BoardUser[]
-  onCardClick: (cardId: string) => void
-  onAddCard: (listId: string, title: string) => void
-  onDeleteCard: (cardId: string) => void
+  list: List;
+  users: BoardUser[];
+  onCardClick: (cardId: string) => void;
+  onAddCard: (listId: string, title: string) => void;
+  onDeleteCard: (cardId: string) => void;
 }) {
-  const [showAddCard, setShowAddCard] = useState(false)
-  const { setNodeRef } = useDroppable({
+  const [showAddCard, setShowAddCard] = useState(false);
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useSortable({
+      id: list.id,
+    });
+
+  const { setNodeRef: setDroppableRef } = useDroppable({
     id: list.id,
-  })
+  });
+
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+      }
+    : undefined;
 
   return (
-    <div ref={setNodeRef} className="flex-shrink-0 w-72 sm:w-80" data-velt-target={`list-${list.id}`}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex-shrink-0 w-72 sm:w-80 ${isDragging ? "opacity-50" : ""}`}
+      data-velt-target={`list-${list.id}`}
+      {...attributes}
+    >
       <Card className="bg-muted/50">
         <CardContent className="p-3 sm:p-4">
           {/* List Header */}
           <div className="flex items-center justify-between mb-4">
-            <h3
-              className="font-semibold text-foreground cursor-pointer hover:bg-accent hover:text-accent-foreground px-2 py-1 rounded -mx-2 text-sm sm:text-base truncate flex-1 mr-2"
-              data-velt-target={`list-title-${list.id}`}
-              contentEditable
-              suppressContentEditableWarning
-            >
-              {list.title}
-            </h3>
+            <div className="flex items-center flex-1 mr-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 mr-2 flex-shrink-0 cursor-grab active:cursor-grabbing"
+                {...listeners}
+              >
+                <GripVertical className="h-4 w-4" />
+              </Button>
+              <h3
+                className="font-semibold text-foreground cursor-pointer hover:bg-accent hover:text-accent-foreground px-2 py-1 rounded -mx-2 text-sm sm:text-base truncate flex-1"
+                data-velt-target={`list-title-${list.id}`}
+                contentEditable
+                suppressContentEditableWarning
+                onClick={(e) => e.stopPropagation()}
+              >
+                {list.title}
+              </h3>
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setShowAddCard(true)}>Add card</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowAddCard(true)}>
+                  Add card
+                </DropdownMenuItem>
                 <DropdownMenuItem>Copy list</DropdownMenuItem>
                 <DropdownMenuItem>Move list</DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive">Delete list</DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive">
+                  Delete list
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
 
           {/* Cards */}
-          <div className="space-y-3 mb-4 min-h-[100px]">
+          <div className="space-y-3 mb-4 min-h-[100px]" ref={setDroppableRef}>
             {list.cards.map((card) => (
               <DraggableCard
                 key={card.id}
@@ -316,7 +386,11 @@ function DroppableList({
 
           {/* Add Card Form or Button */}
           {showAddCard ? (
-            <AddCardForm listId={list.id} onAddCard={onAddCard} onCancel={() => setShowAddCard(false)} />
+            <AddCardForm
+              listId={list.id}
+              onAddCard={onAddCard}
+              onCancel={() => setShowAddCard(false)}
+            />
           ) : (
             <Button
               variant="ghost"
@@ -331,29 +405,47 @@ function DroppableList({
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 // Update the main Board component to pass onDeleteCard
-export function Board({ board, users, onCardClick, onAddCard, onAddList, onDeleteCard }: BoardProps) {
-  const [showAddList, setShowAddList] = useState(false)
+export function Board({
+  board,
+  users,
+  onCardClick,
+  onAddCard,
+  onAddList,
+  onDeleteCard,
+}: BoardProps) {
+  const [showAddList, setShowAddList] = useState(false);
 
   return (
-    <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-6 px-1" data-velt-target="board-container">
-      {board.lists.map((list) => (
-        <DroppableList
-          key={list.id}
-          list={list}
-          users={users}
-          onCardClick={onCardClick}
-          onAddCard={onAddCard}
-          onDeleteCard={onDeleteCard}
-        />
-      ))}
+    <div
+      className="flex gap-4 sm:gap-6 overflow-x-auto pb-6 px-1"
+      data-velt-target="board-container"
+    >
+      <SortableContext
+        items={board.lists.map((list) => list.id)}
+        strategy={horizontalListSortingStrategy}
+      >
+        {board.lists.map((list) => (
+          <DroppableList
+            key={list.id}
+            list={list}
+            users={users}
+            onCardClick={onCardClick}
+            onAddCard={onAddCard}
+            onDeleteCard={onDeleteCard}
+          />
+        ))}
+      </SortableContext>
 
       {/* Add List Form or Button */}
       {showAddList ? (
-        <AddListForm onAddList={onAddList} onCancel={() => setShowAddList(false)} />
+        <AddListForm
+          onAddList={onAddList}
+          onCancel={() => setShowAddList(false)}
+        />
       ) : (
         <div className="flex-shrink-0 w-72 sm:w-80">
           <Button
@@ -369,5 +461,5 @@ export function Board({ board, users, onCardClick, onAddCard, onAddList, onDelet
         </div>
       )}
     </div>
-  )
+  );
 }
