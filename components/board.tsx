@@ -5,6 +5,9 @@ import type React from "react"
 import { useState } from "react"
 import { useDroppable } from "@dnd-kit/core"
 import { useDraggable } from "@dnd-kit/core"
+import { useSortable } from "@dnd-kit/sortable"
+import { SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { Plus, MoreHorizontal, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -334,22 +337,129 @@ function DroppableList({
   )
 }
 
+// Create SortableList component that wraps DroppableList with sortable functionality
+function SortableList({
+  list,
+  users,
+  onCardClick,
+  onAddCard,
+  onDeleteCard,
+}: {
+  list: List
+  users: BoardUser[]
+  onCardClick: (cardId: string) => void
+  onAddCard: (listId: string, title: string) => void
+  onDeleteCard: (cardId: string) => void
+}) {
+  const [showAddCard, setShowAddCard] = useState(false)
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: list.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex-shrink-0 w-72 sm:w-80 ${isDragging ? "opacity-50" : ""}`}
+      data-velt-target={`list-${list.id}`}
+    >
+      <Card className="bg-muted/50 cursor-grab active:cursor-grabbing">
+        <CardContent className="p-3 sm:p-4">
+          {/* List Header with Drag Handle */}
+          <div className="flex items-center justify-between mb-4">
+            <div
+              className="flex items-center flex-1 cursor-grab active:cursor-grabbing"
+              {...attributes}
+              {...listeners}
+            >
+              <h3
+                className="font-semibold text-foreground cursor-pointer hover:bg-accent hover:text-accent-foreground px-2 py-1 rounded -mx-2 text-sm sm:text-base truncate flex-1 mr-2"
+                data-velt-target={`list-title-${list.id}`}
+                contentEditable
+                suppressContentEditableWarning
+              >
+                {list.title}
+              </h3>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setShowAddCard(true)}>Add card</DropdownMenuItem>
+                <DropdownMenuItem>Copy list</DropdownMenuItem>
+                <DropdownMenuItem>Move list</DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive">Delete list</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Cards */}
+          <div className="space-y-3 mb-4 min-h-[100px]">
+            {list.cards.map((card) => (
+              <DraggableCard
+                key={card.id}
+                card={card}
+                users={users}
+                onCardClick={onCardClick}
+                onDeleteCard={onDeleteCard}
+              />
+            ))}
+          </div>
+
+          {/* Add Card Form or Button */}
+          {showAddCard ? (
+            <AddCardForm listId={list.id} onAddCard={onAddCard} onCancel={() => setShowAddCard(false)} />
+          ) : (
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-muted-foreground hover:text-foreground text-sm"
+              onClick={() => setShowAddCard(true)}
+              data-velt-target={`add-card-${list.id}`}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add a card
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 // Update the main Board component to pass onDeleteCard
 export function Board({ board, users, onCardClick, onAddCard, onAddList, onDeleteCard }: BoardProps) {
   const [showAddList, setShowAddList] = useState(false)
+  
+  // Extract list IDs for SortableContext
+  const listIds = board.lists.map(list => list.id)
 
   return (
     <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-6 px-1" data-velt-target="board-container">
-      {board.lists.map((list) => (
-        <DroppableList
-          key={list.id}
-          list={list}
-          users={users}
-          onCardClick={onCardClick}
-          onAddCard={onAddCard}
-          onDeleteCard={onDeleteCard}
-        />
-      ))}
+      <SortableContext items={listIds} strategy={horizontalListSortingStrategy}>
+        {board.lists.map((list) => (
+          <SortableList
+            key={list.id}
+            list={list}
+            users={users}
+            onCardClick={onCardClick}
+            onAddCard={onAddCard}
+            onDeleteCard={onDeleteCard}
+          />
+        ))}
+      </SortableContext>
 
       {/* Add List Form or Button */}
       {showAddList ? (

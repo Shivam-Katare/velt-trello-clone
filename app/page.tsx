@@ -18,6 +18,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core"
+import { arrayMove } from "@dnd-kit/sortable"
 import { Card, CardContent } from "@/components/ui/card"
 
 // Mock data - matching Velt user system
@@ -41,7 +42,7 @@ const mockUsers = [
 
 
 export default function Home() {
-  const { boardData, isInitialized, addCard, deleteCard, moveCard, addList } = useLiveBoardSync()
+  const { boardData, isInitialized, addCard, deleteCard, moveCard, addList, reorderLists } = useLiveBoardSync()
   const [activeCard, setActiveCard] = useState<BoardCard | null>(null)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [selectedCard, setSelectedCard] = useState<string | null>(null)
@@ -90,11 +91,21 @@ export default function Home() {
 
     if (!over) return
 
-    const activeCardId = active.id as string
-    const overListId = over.id as string
-
-    // Use the live sync move card function
-    moveCard(activeCardId, overListId)
+    // Check if dragging a list (list IDs vs card IDs)
+    if (active.id.toString().startsWith('list-')) {
+      // Handle list reordering
+      if (active.id !== over.id) {
+        const oldIndex = boardData.lists.findIndex(l => l.id === active.id)
+        const newIndex = boardData.lists.findIndex(l => l.id === over.id)
+        const newOrder = arrayMove(boardData.lists, oldIndex, newIndex).map(l => l.id)
+        reorderLists(newOrder)
+      }
+    } else {
+      // Existing card drag logic remains unchanged
+      const activeCardId = active.id as string
+      const overListId = over.id as string
+      moveCard(activeCardId, overListId)
+    }
   }
 
   const handleAddCard = (listId: string, title: string) => {

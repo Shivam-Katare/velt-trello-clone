@@ -277,6 +277,13 @@ export function useLiveBoardSync() {
     }))
   }, [updateBoardData])
 
+  const reorderLists = useCallback((newListOrder: string[]) => {
+    updateBoardData(prev => ({
+      ...prev,
+      lists: newListOrder.map(id => prev.lists.find(list => list.id === id)!).filter(Boolean)
+    }))
+  }, [updateBoardData])
+
   return {
     boardData: localBoardData,
     isInitialized,
@@ -284,6 +291,7 @@ export function useLiveBoardSync() {
     deleteCard,
     moveCard,
     addList,
+    reorderLists,
     updateBoardData
   }
 }
