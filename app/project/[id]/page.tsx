@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { Board } from "@/components/board";
 import { CardDetailModal } from "@/components/card-detail-modal";
@@ -25,27 +25,11 @@ import {
 } from "@dnd-kit/core";
 import { Card, CardContent } from "@/components/ui/card";
 
-// Mock data - matching Velt user system
-const mockUsers = [
-  {
-    id: "user_alice_johnson",
-    name: "Alice Johnson",
-    avatar:
-      "https://api.dicebear.com/7.x/avataaars/svg?seed=user_alice_johnson",
-    email: "alice@example.com",
-    online: true,
-  },
-  {
-    id: "user_bob_smith",
-    name: "Bob Smith",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=user_bob_smith",
-    email: "bob@example.com",
-    online: true,
-  },
-];
-
-export default function Home() {
+export default function ProjectBoard() {
+  const params = useParams();
   const router = useRouter();
+  const projectId = params.id as string;
+
   const {
     projects,
     currentProject,
@@ -53,7 +37,7 @@ export default function Home() {
     isInitialized: projectsInitialized,
   } = useProjects();
   const { boardData, isInitialized, addCard, deleteCard, moveCard, addList } =
-    useLiveBoardSync();
+    useLiveBoardSync(projectId);
   const [activeCard, setActiveCard] = useState<BoardCard | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
@@ -61,35 +45,29 @@ export default function Home() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
-  // Initialize user on client side only
+  // Initialize user
   useEffect(() => {
     const user = getOrCreateUser();
     setCurrentUser(user);
   }, []);
 
-  // Redirect to first project if available
+  // Set current project based on URL
   useEffect(() => {
-    if (projectsInitialized && projects.length > 0 && !currentProject) {
-      setCurrentProject(projects[0].id);
-      router.push(`/project/${projects[0].id}/board`);
+    if (projectsInitialized && projectId) {
+      const project = projects.find((p) => p.id === projectId);
+      if (project) {
+        setCurrentProject(projectId);
+      } else {
+        router.push("/");
+      }
     }
-  }, [
-    projectsInitialized,
-    projects,
-    currentProject,
-    setCurrentProject,
-    router,
-  ]);
+  }, [projectsInitialized, projectId, projects, setCurrentProject, router]);
 
   const handleUserSwitch = async () => {
     const newUser = switchUser();
     if (newUser) {
       setCurrentUser(newUser);
-
-      // Small delay to ensure state is updated
       await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Trigger Velt user switch event
       window.dispatchEvent(new CustomEvent("velt-user-switch"));
     }
   };
@@ -125,7 +103,6 @@ export default function Home() {
     const activeCardId = active.id as string;
     const overListId = over.id as string;
 
-    // Use the live sync move card function
     moveCard(activeCardId, overListId);
   };
 
@@ -141,8 +118,9 @@ export default function Home() {
     addList(title);
   };
 
-  // Don't render until live sync is initialized
-  if (!isInitialized) {
+  const isLoading = !projectsInitialized || !currentProject || !isInitialized;
+
+  if (isLoading) {
     return (
       <ThemeProvider>
         <div className="min-h-screen bg-background flex items-center justify-center">
@@ -159,7 +137,7 @@ export default function Home() {
         <Navbar
           currentUser={currentUser}
           onUserSwitch={handleUserSwitch}
-          boardTitle={boardData.title}
+          boardTitle={currentProject.title}
         />
         <main className="p-3 sm:p-6">
           <DndContext
@@ -169,7 +147,7 @@ export default function Home() {
           >
             <Board
               board={boardData}
-              users={mockUsers}
+              users={[]} // TODO: Load users based on project members
               onCardClick={handleCardClick}
               onAddCard={handleAddCard}
               onAddList={handleAddList}
@@ -194,12 +172,11 @@ export default function Home() {
         {selectedCard && selectedCardData && (
           <CardDetailModal
             card={selectedCardData}
-            users={mockUsers}
+            users={[]} // TODO: Load users
             onClose={handleCloseCardDetail}
           />
         )}
 
-        {/* Velt Comments Components */}
         <DynamicVeltComments popoverMode={true} />
         <DynamicVeltCommentsSidebar />
       </div>
